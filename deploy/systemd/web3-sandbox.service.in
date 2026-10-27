@@ -1,0 +1,17 @@
+[Unit]
+Description=Web3 quant sandbox HTTP service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{REPO_DIR}}
+Environment=SANDBOX_HOST={{HOST}}
+Environment=SANDBOX_PORT={{PORT}}
+EnvironmentFile=-{{REPO_DIR}}/.env
+ExecStart={{REPO_DIR}}/.venv/bin/python {{REPO_DIR}}/app.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

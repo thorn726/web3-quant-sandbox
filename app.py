@@ -9,13 +9,14 @@ from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+import os
 import sys
 
 
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
-HOST = "127.0.0.1"
-PORT = 8765
+HOST = os.environ.get("SANDBOX_HOST", "127.0.0.1")
+PORT = int(os.environ.get("SANDBOX_PORT", "8765"))
 sys.path.insert(0, str(SRC))
 
 from backtest.rolling.service import (  # noqa: E402

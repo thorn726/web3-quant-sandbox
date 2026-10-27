@@ -1,0 +1,11 @@
+[Unit]
+Description=Web3 quant sandbox dashboard snapshot refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory={{REPO_DIR}}
+EnvironmentFile=-{{REPO_DIR}}/.env
+ExecStart={{REPO_DIR}}/.venv/bin/python {{REPO_DIR}}/dashboard_snapshot.py --mode auto
+# Non-zero exit on refresh failure; snapshots on disk are left untouched.

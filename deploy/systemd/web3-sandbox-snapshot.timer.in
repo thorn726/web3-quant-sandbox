@@ -1,0 +1,9 @@
+[Unit]
+Description=Run web3-sandbox snapshot refresh daily
+
+[Timer]
+OnCalendar={{ON_CALENDAR}}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

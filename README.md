@@ -246,6 +246,88 @@ py scripts/course.py check
 py scripts/course.py teaching-plots
 ```
 
+## 生产部署（自用单服务器，Linux + systemd）
+
+服务以 systemd 直跑 `.venv/bin/python app.py`，HTTP 直连（无域名/HTTPS/反向代理），靠防火墙白名单限制访问。服务崩溃自动重启（`Restart=on-failure`），服务器重启后自动恢复（`WantedBy=multi-user.target`）。
+
+### 前置条件
+
+- Linux 服务器（Ubuntu/Debian 等，含 systemd），Python 3.11+，Node.js + npm（用于前端构建），git，make，sudo 权限。
+- 唯一用户自己的 IP（用于防火墙白名单）。
+- 可选：LLM API key（策略实验室 AI 功能用）。
+
+### 从零部署命令序列
+
+```bash
+git clone <repo-url> web3-quant-sandbox && cd web3-quant-sandbox
+make deploy
+```
+
+`make deploy` 依次完成：venv 创建 → Python 依赖安装 → `npm ci` + 前端构建（复用 `make setup`）→ 安装并启动 systemd 服务 → 安装并启用快照定时刷新 timer。任一步失败会直接报错，修复后可重跑（幂等，重复执行安全）。
+
+服务默认监听 `0.0.0.0:8765`，可用 `SANDBOX_HOST` / `SANDBOX_PORT` 环境变量覆盖（对 `make deploy` 传参即可，如 `make deploy SANDBOX_PORT=9000`）。
+
+### 防火墙白名单（仅放行自己的 IP）
+
+云安全组（阿里云/腾讯云/AWS 等，推荐优先使用）：入方向规则放行 TCP 8765，来源填自己的 IP/32；其余入方向端口保持关闭。
+
+系统防火墙（ufw 示例）：
+
+```bash
+sudo ufw allow from <你的IP> to any port 8765 proto tcp
+sudo ufw deny 8765/tcp
+sudo ufw enable
+```
+
+iptables 写法：
+
+```bash
+sudo iptables -A INPUT -p tcp --dport 8765 -s <你的IP> -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 8765 -j DROP
+```
+
+### LLM API key 配置（密钥只存服务器）
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入 LLM 相关 key；.env 已被 git 忽略，不会进入版本库
+chmod 600 .env
+sudo systemctl restart web3-sandbox
+```
+
+systemd unit 通过 `EnvironmentFile=-/path/to/.env` 读取该文件（不存在也不报错）。
+
+### 快照定时刷新与断网降级
+
+- `web3-sandbox-snapshot.timer` 默认每天 06:30 触发 `dashboard_snapshot.py --mode auto`；自定义周期用 systemd OnCalendar 表达式，如 `make deploy-timer ON_CALENDAR="*-*-* 03:00:00"`（每天 03:00）。
+- 刷新失败（断网/限频）时脚本以非零码退出，systemd 记录失败到 journal；旧快照文件原样保留，`/api/dashboard/*` 继续以旧快照正常响应，服务不受影响。该降级行为有 pytest 覆盖（`tests/test_snapshot_refresh_degradation.py`）。
+
+### 日常运维
+
+| 命令 | 作用 |
+| --- | --- |
+| `make service-status` | 查看服务状态 |
+| `make service-logs` | 查看服务日志（最近 200 行并跟随） |
+| `make service-restart` | 重启服务 |
+| `make snapshot-refresh` | 手动刷新快照 |
+| `make snapshot-status` | 查看刷新 timer 状态与下次触发时间 |
+| `make verify` | 一键自检（构建 + 测试 + 边界检查） |
+
+卸载部署：`.venv/bin/python scripts/deploy_service.py uninstall`。
+
+### 离线重部署
+
+`make deploy` 中 `make setup` 需要网络安装 npm/pip 依赖。若服务器断网：提前在联网机器执行 `make setup` 后把 `.venv`、`src/web/node_modules`、`src/web/static` 一并同步到服务器，再在服务器上只执行 `make deploy-service`（跳过依赖安装，仅安装/重启 systemd 服务）。快照数据仓库内置，离线也能启动。
+
+### 服务器验收清单
+
+在目标服务器上逐条实测并记录结果：
+
+1. 重启自动恢复：`sudo reboot` 后 `make service-status` 显示 active。
+2. 一条命令序列从零部署：全新目录 `git clone` + `make deploy` 到 HTTP 端口可访问。
+3. 快照定时刷新 + 断网降级：`make snapshot-status` 可见触发记录；断网下 `make snapshot-refresh` 失败但页面仍返回旧快照。
+4. 服务器上 `make verify` 全绿 + 核心页面操作正常。
+
 ## 项目结构
 
 ```text
