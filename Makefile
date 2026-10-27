@@ -1,6 +1,7 @@
 .PHONY: setup check verify courseware-check teaching-plots \
-        deploy deploy-service deploy-timer service-status service-logs service-restart \
-        snapshot-refresh snapshot-status snapshot-logs
+        deploy deploy-service deploy-timer deploy-data-timer service-status service-logs service-restart \
+        snapshot-refresh snapshot-status snapshot-logs \
+        marketdata-backfill marketdata-refresh marketdata-status marketdata-logs
 
 PYTHON ?= python3
 VENV_PYTHON := .venv/bin/python
@@ -10,6 +11,10 @@ ON_CALENDAR ?= *-*-* 06:30:00
 SERVICE_NAME := web3-sandbox
 SNAPSHOT_TIMER_NAME := web3-sandbox-snapshot.timer
 SNAPSHOT_SERVICE_NAME := web3-sandbox-snapshot.service
+MARKETDATA_TIMER_NAME := web3-sandbox-marketdata.timer
+MARKETDATA_SERVICE_NAME := web3-sandbox-marketdata.service
+MARKETDATA_CALENDAR ?= *-*-* *:*/5
+MARKETDATA_BACKFILL_START ?= 2020-01-01
 
 setup:
 	$(PYTHON) scripts/course.py setup
@@ -55,3 +60,20 @@ snapshot-refresh:
 
 snapshot-status:
 	systemctl list-timers $(SNAPSHOT_TIMER_NAME) --all
+
+# --- Market data pipeline (bronze layer) ---
+
+deploy-data-timer:
+	$(VENV_PYTHON) scripts/deploy_service.py install-data-timer --on-calendar "$(MARKETDATA_CALENDAR)"
+
+marketdata-backfill:
+	$(VENV_PYTHON) scripts/market_data.py backfill --start $(MARKETDATA_BACKFILL_START)
+
+marketdata-refresh:
+	$(VENV_PYTHON) scripts/market_data.py refresh
+
+marketdata-status:
+	systemctl list-timers $(MARKETDATA_TIMER_NAME) --all
+
+marketdata-logs:
+	journalctl -u $(MARKETDATA_SERVICE_NAME) -n 200

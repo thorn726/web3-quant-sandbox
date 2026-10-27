@@ -1,0 +1,9 @@
+[Unit]
+Description=Run web3-sandbox market data refresh on schedule
+
+[Timer]
+OnCalendar={{ON_CALENDAR}}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

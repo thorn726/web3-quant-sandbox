@@ -1,0 +1,13 @@
+[Unit]
+Description=Web3 quant sandbox market data bronze refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User={{USER}}
+WorkingDirectory={{REPO_DIR}}
+EnvironmentFile=-{{REPO_DIR}}/.env
+ExecStart={{REPO_DIR}}/.venv/bin/python {{REPO_DIR}}/scripts/market_data.py refresh
+# Non-zero exit on refresh failure; bronze partitions and watermarks on
+# disk are left untouched (outage contract).
