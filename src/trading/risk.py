@@ -49,11 +49,16 @@ class RiskGate:
         self._limits = limits
 
     def check_order(self, symbol: str, side: str, quantity: float, price: float, position_quote: float) -> RiskDecision:
+        """position_quote is the SIGNED current position valued at price.
+
+        Both buys and sells are checked against the cap: repeated sells
+        into a short position cannot bypass the limit.
+        """
         notional = quantity * price
         if notional > self._limits.max_order_quote:
             return RiskDecision(False, f"order notional {notional:.2f} exceeds max_order_quote {self._limits.max_order_quote:.2f}")
-        projected = position_quote + notional if side == "buy" else position_quote
-        if projected > self._limits.max_position_quote:
+        projected = position_quote + (notional if side == "buy" else -notional)
+        if abs(projected) > self._limits.max_position_quote:
             return RiskDecision(False, f"projected position {projected:.2f} exceeds max_position_quote {self._limits.max_position_quote:.2f}")
         return RiskDecision(True, "ok")
 

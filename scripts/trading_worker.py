@@ -30,12 +30,9 @@ WATERMARK_MIN_ROWS = 1
 
 
 def _watermark_dataset(root: Path, dataset: str) -> int | None:
-    import json
+    from market_data import watermarks
 
-    path = root / "market_data" / "watermarks.json"
-    if not path.is_file():
-        return None
-    return json.loads(path.read_text(encoding="utf-8")).get(dataset)
+    return watermarks.get(root / "market_data" / "watermarks.json", dataset)
 
 
 def check_freshness(root: Path, datasets: list[str], notify=alerts.alert) -> list[str]:
@@ -71,9 +68,14 @@ def daily_heartbeat(state_dir: Path, breaker: CircuitBreaker, notify=alerts.aler
         f"today realized P&L: {pnl:.2f} quote"
     )
     try:
-        notify(text)
+        result = notify(text)
+        delivered = any(result.values()) if isinstance(result, dict) else True
     except Exception as exc:
         LOG.error("heartbeat alert failed: %s", exc)
+        delivered = False
+    if not delivered:
+        LOG.warning("heartbeat not delivered; will retry next tick")
+        return False
     state_dir.mkdir(parents=True, exist_ok=True)
     marker.write_text(today + "\n", encoding="utf-8")
     return True
@@ -98,8 +100,9 @@ def main() -> int:
     else:
         LOG.info("exchange keys not configured; skipping reconciliation (paper phase)")
 
+    interval = os.environ.get("MARKET_DATA_INTERVAL", "1d")
     datasets = [
-        f"binance:{symbol.strip()}:{os.environ.get('MARKET_DATA_INTERVAL', '1d')}"
+        f"binance:{symbol.strip()}:{interval}"
         for symbol in os.environ.get("MARKET_DATA_SYMBOLS", "BTCUSDT,ETHUSDT").split(",")
         if symbol.strip()
     ]

@@ -26,9 +26,6 @@ KLINE_COLUMNS = [
     "trades",
 ]
 
-# Binance Vision kline dump columns (12 fields, no header).
-VISION_COLUMNS = KLINE_COLUMNS[:7] + ["ignore", "quote_volume", "trades", "ignore2", "ignore3"]
-
 
 def partition_path(root: Path, source: str, symbol: str, interval: str, month: str, version: int = 1) -> Path:
     name = f"{month}.parquet" if version == 1 else f"{month}.v{version}.parquet"

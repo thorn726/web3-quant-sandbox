@@ -24,21 +24,21 @@ class OrderDenied(Exception):
 
 
 class PaperExecutor:
-    def __init__(self, ledger: Ledger, limits: RiskLimits, breaker: "CircuitBreaker | None" = None):
+    def __init__(self, ledger: Ledger, limits: RiskLimits, breaker: CircuitBreaker):
         self._ledger = ledger
         self._gate = RiskGate(limits)
         self._limits = limits
         self._breaker = breaker
 
     def submit(self, symbol: str, side: str, quantity: float, price: float) -> str:
-        if self._breaker is not None and self._breaker.is_tripped():
+        if self._breaker.is_tripped():
             state = self._breaker.state()
             raise OrderDenied(f"circuit breaker tripped: {state.get('reason', 'unknown')}")
         pnl = daily_pnl.daily_pnl(self._ledger)  # today's UTC realized P&L
         loss = self._gate.check_daily_loss(pnl)
         if not loss.allowed:
             raise OrderDenied(loss.reason)
-        position_quote = max(self._ledger.position(symbol), 0.0) * price
+        position_quote = self._ledger.position(symbol) * price  # signed
         decision: RiskDecision = self._gate.check_order(symbol, side, quantity, price, position_quote)
         if not decision.allowed:
             raise OrderDenied(decision.reason)

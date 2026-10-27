@@ -19,6 +19,14 @@ from urllib.request import urlopen
 import pandas as pd
 
 from market_data import storage, watermarks
+from market_data.silver import INTERVAL_MS as _INTERVAL_MS
+from market_data.silver import dataset_key
+
+
+def silver_interval_ms(interval: str) -> int:
+    if interval not in _INTERVAL_MS:
+        raise ValueError(f"unknown interval: {interval}")
+    return _INTERVAL_MS[interval]
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +101,7 @@ def fetch_vision_month(symbol: str, interval: str, month: str, timeout: float = 
 
 def backfill_vision(root: Path, symbol: str, interval: str, start_ms: int, end_ms: int | None = None) -> RefreshResult:
     """One-pass historical backfill from Binance Vision monthly dumps."""
-    dataset = f"binance:{symbol}:{interval}"
+    dataset = dataset_key("binance", symbol, interval)
     end = end_ms if end_ms is not None else int(datetime.now(timezone.utc).timestamp() * 1000)
     written: list[str] = []
     rows = 0
@@ -102,7 +110,7 @@ def backfill_vision(root: Path, symbol: str, interval: str, start_ms: int, end_m
         if path.exists() and not storage.partition_path(root, "binance", symbol, interval, month, version=2).exists():
             existing = pd.read_parquet(path)
             lo, hi = _month_bounds(month)
-            expected_hi = min(hi, end) - 60_000  # trailing month may be partial
+            expected_hi = min(hi, end) - silver_interval_ms(interval)  # trailing month may be partial
             if int(existing["open_time"].min()) >= lo and int(existing["open_time"].max()) >= expected_hi:
                 continue  # complete month already archived
         raw = fetch_vision_month(symbol, interval, month)
@@ -144,7 +152,7 @@ def fetch_rest_klines(symbol: str, interval: str, start_ms: int, timeout: float 
 
 def refresh_incremental(root: Path, symbol: str, interval: str) -> RefreshResult:
     """Append new klines since the watermark. Failure = no side effects."""
-    dataset = f"binance:{symbol}:{interval}"
+    dataset = dataset_key("binance", symbol, interval)
     wm_path = root / "watermarks.json"
     start = watermarks.get(wm_path, dataset)
     if start is None:
@@ -156,17 +164,29 @@ def refresh_incremental(root: Path, symbol: str, interval: str) -> RefreshResult
         return RefreshResult(dataset=dataset, months_written=[], rows=0, ok=False, error=str(exc))
     if df.empty:
         return RefreshResult(dataset=dataset, months_written=[], rows=0, ok=True)
+    step = silver_interval_ms(interval)
     for month, group in df.groupby(df["open_time"].map(storage.month_of)):
         path = storage.partition_path(root, "binance", symbol, interval, str(month))
         merged = group
         if path.exists():
             existing = pd.read_parquet(path)
+            # bronze immutability: existing rows win over restated values
+            restated = group[group["open_time"].isin(existing["open_time"])]
+            if not restated.empty:
+                logger.warning(
+                    "restated rows for existing open_times in %s; keeping original bronze values",
+                    path.name,
+                )
+            new_rows = group[~group["open_time"].isin(existing["open_time"])]
+            if new_rows.empty:
+                continue
             merged = (
-                pd.concat([existing, group], ignore_index=True)
+                pd.concat([existing, new_rows], ignore_index=True)
                 .sort_values("open_time")
-                .drop_duplicates("open_time", keep="last")
                 .reset_index(drop=True)
             )
+            if not (merged["open_time"].diff().dropna() == step).all():
+                logger.warning("gap detected while appending to %s; marked via silver gap_after", path.name)
         storage.write_month(merged, path, append=True)
         watermarks.advance(wm_path, dataset, int(merged["open_time"].max()))
     return RefreshResult(dataset=dataset, months_written=[], rows=len(df), ok=True)

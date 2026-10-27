@@ -57,16 +57,32 @@ def fetch_exchange_trades(symbol: str, limit: int = 500) -> list[dict]:
     return _signed_request(BINANCE_MY_TRADES, {"symbol": symbol, "limit": str(limit)}, api_key, api_secret)
 
 
-def local_exchange_ids(ledger: Ledger) -> set[str]:
-    rows = ledger._conn.execute(
-        "SELECT exchange_trade_id FROM fills WHERE exchange_trade_id != ''"
-    ).fetchall()
-    return {row[0] for row in rows}
+def local_exchange_ids(ledger: Ledger, since_ms: int | None = None) -> set[str]:
+    """Exchange ids recorded locally, optionally restricted to the window.
+
+    The exchange API returns only its most recent trades; comparing local
+    ids older than that window would false-positive. since_ms should be
+    the oldest trade time in the exchange payload.
+    """
+    if since_ms is None:
+        return ledger.exchange_trade_ids()
+    return {
+        trade_id
+        for trade_id, traded_at in ledger.exchange_trades_with_time()
+        if _parse_ms(traded_at) >= since_ms
+    }
+
+
+def _parse_ms(traded_at: str) -> int:
+    from datetime import datetime, timezone
+
+    return int(datetime.fromisoformat(traded_at).timestamp() * 1000)
 
 
 def reconcile(ledger: Ledger, breaker: CircuitBreaker, exchange_trades: list[dict], notify=alerts.alert) -> ReconcileReport:
-    local_ids = local_exchange_ids(ledger)
     exchange_ids = {str(t["id"]) for t in exchange_trades}
+    oldest = min((int(t["time"]) for t in exchange_trades if "time" in t), default=None)
+    local_ids = local_exchange_ids(ledger, since_ms=oldest)
     missing_locally = sorted(exchange_ids - local_ids)
     missing_on_exchange = sorted(local_ids - exchange_ids)
     report = ReconcileReport(

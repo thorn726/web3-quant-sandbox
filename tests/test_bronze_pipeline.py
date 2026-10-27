@@ -95,3 +95,42 @@ def test_backfill_idempotent(monkeypatch, tmp_path):
     assert r1.ok and r1.rows == 3
     r2 = refresh.backfill_vision(tmp_path, symbol, interval, t0, end_ms=t0 + 60_000)
     assert r2.rows == 0 and r2.months_written == []  # second pass: no rewrites
+
+
+def test_append_never_overwrites_restatement(tmp_path, monkeypatch):
+    from market_data import refresh as md_refresh
+
+    symbol, interval = "BTCUSDT", "1m"
+    t0 = 1_704_067_200_000
+    original = _sample_rows([t0 + i * 60_000 for i in range(5)])
+    path = storage.partition_path(tmp_path, "binance", symbol, interval, storage.month_of(t0))
+    path.parent.mkdir(parents=True)
+    original.to_parquet(path, index=False)
+    watermarks.advance(tmp_path / "watermarks.json", f"binance:{symbol}:{interval}", int(original["open_time"].max()))
+
+    # exchange restates an existing bar and adds a new one
+    restated = _sample_rows([t0, t0 + 5 * 60_000], base_price=999.0)
+    monkeypatch.setattr(md_refresh, "fetch_rest_klines", lambda s, i, start, timeout=30.0: restated)
+    result = md_refresh.refresh_incremental(tmp_path, symbol, interval)
+    assert result.ok
+    merged = storage.read_symbol(tmp_path, "binance", symbol, interval)
+    assert len(merged) == 6
+    assert merged["open"].iloc[0] == original["open"].iloc[0]  # original preserved
+
+
+def test_backfill_completeness_uses_interval_granularity(tmp_path, monkeypatch):
+    from market_data import refresh as md_refresh
+
+    symbol, interval = "BTCUSDT", "1d"
+    t0 = 1_704_067_200_000  # 2024-01-01, daily bars
+    payload = _sample_rows([t0, t0 + 86_400_000])
+    monkeypatch.setattr(md_refresh, "fetch_vision_month", lambda s, i, m, timeout=60.0: b"")
+    monkeypatch.setattr(md_refresh, "_parse_vision_csv", lambda raw: payload)
+    md_refresh.backfill_vision(tmp_path, symbol, interval, t0, end_ms=t0 + 86_400_000)
+    # second pass must NOT re-download: month complete at 1d granularity
+    calls = []
+    monkeypatch.setattr(
+        md_refresh, "fetch_vision_month", lambda s, i, m, timeout=60.0: calls.append(m) or b""
+    )
+    result = md_refresh.backfill_vision(tmp_path, symbol, interval, t0, end_ms=t0 + 86_400_000)
+    assert calls == [] and result.rows == 0

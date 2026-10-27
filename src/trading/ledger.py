@@ -194,5 +194,26 @@ class Ledger:
         ).fetchone()
         return float(row[0]) if row else 0.0
 
+    def all_fills(self) -> list[tuple[str, float, float, str]]:
+        """(side, price, quantity, traded_at) ordered by trade time."""
+        return [
+            (row[0], float(row[1]), float(row[2]), row[3])
+            for row in self._conn.execute(
+                "SELECT side, price, quantity, traded_at FROM fills ORDER BY traded_at, seq"
+            ).fetchall()
+        ]
+
+    def exchange_trade_ids(self) -> set[str]:
+        return {trade_id for trade_id, _ in self.exchange_trades_with_time()}
+
+    def exchange_trades_with_time(self) -> list[tuple[str, str]]:
+        """(exchange_trade_id, traded_at) for fills that have an exchange id."""
+        return [
+            (row[0], row[1])
+            for row in self._conn.execute(
+                "SELECT exchange_trade_id, traded_at FROM fills WHERE exchange_trade_id != '' ORDER BY traded_at, seq"
+            ).fetchall()
+        ]
+
     def close(self) -> None:
         self._conn.close()

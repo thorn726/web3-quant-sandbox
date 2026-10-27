@@ -85,34 +85,26 @@ def install_service(host: str, port: str) -> None:
     _activate(SERVICE_UNIT, start=True)
 
 
-def install_timer(on_calendar: str) -> None:
-    service_tpl = (TEMPLATE_DIR / f"{SNAPSHOT_SERVICE_UNIT}.in").read_text(encoding="utf-8")
-    timer_tpl = (TEMPLATE_DIR / f"{SNAPSHOT_TIMER_UNIT}.in").read_text(encoding="utf-8")
-    _write_unit(SNAPSHOT_SERVICE_UNIT, _render(service_tpl, host="", port="", on_calendar=on_calendar))
-    _write_unit(SNAPSHOT_TIMER_UNIT, _render(timer_tpl, host="", port="", on_calendar=on_calendar))
+def _install_timer_pair(service_unit: str, timer_unit: str, on_calendar: str) -> None:
+    service_tpl = (TEMPLATE_DIR / f"{service_unit}.in").read_text(encoding="utf-8")
+    timer_tpl = (TEMPLATE_DIR / f"{timer_unit}.in").read_text(encoding="utf-8")
+    _write_unit(service_unit, _render(service_tpl, host="", port="", on_calendar=on_calendar))
+    _write_unit(timer_unit, _render(timer_tpl, host="", port="", on_calendar=on_calendar))
     _systemctl("daemon-reload")
-    _systemctl("enable", "--now", SNAPSHOT_TIMER_UNIT)
-    print(f"installed and started {SNAPSHOT_TIMER_UNIT}")
+    _systemctl("enable", "--now", timer_unit)
+    print(f"installed and started {timer_unit}")
+
+
+def install_timer(on_calendar: str) -> None:
+    _install_timer_pair(SNAPSHOT_SERVICE_UNIT, SNAPSHOT_TIMER_UNIT, on_calendar)
 
 
 def install_data_timer(on_calendar: str) -> None:
-    service_tpl = (TEMPLATE_DIR / f"{MARKETDATA_SERVICE_UNIT}.in").read_text(encoding="utf-8")
-    timer_tpl = (TEMPLATE_DIR / f"{MARKETDATA_TIMER_UNIT}.in").read_text(encoding="utf-8")
-    _write_unit(MARKETDATA_SERVICE_UNIT, _render(service_tpl, host="", port="", on_calendar=on_calendar))
-    _write_unit(MARKETDATA_TIMER_UNIT, _render(timer_tpl, host="", port="", on_calendar=on_calendar))
-    _systemctl("daemon-reload")
-    _systemctl("enable", "--now", MARKETDATA_TIMER_UNIT)
-    print(f"installed and started {MARKETDATA_TIMER_UNIT}")
+    _install_timer_pair(MARKETDATA_SERVICE_UNIT, MARKETDATA_TIMER_UNIT, on_calendar)
 
 
 def install_trading_timer(on_calendar: str) -> None:
-    service_tpl = (TEMPLATE_DIR / f"{TRADING_SERVICE_UNIT}.in").read_text(encoding="utf-8")
-    timer_tpl = (TEMPLATE_DIR / f"{TRADING_TIMER_UNIT}.in").read_text(encoding="utf-8")
-    _write_unit(TRADING_SERVICE_UNIT, _render(service_tpl, host="", port="", on_calendar=on_calendar))
-    _write_unit(TRADING_TIMER_UNIT, _render(timer_tpl, host="", port="", on_calendar=on_calendar))
-    _systemctl("daemon-reload")
-    _systemctl("enable", "--now", TRADING_TIMER_UNIT)
-    print(f"installed and started {TRADING_TIMER_UNIT}")
+    _install_timer_pair(TRADING_SERVICE_UNIT, TRADING_TIMER_UNIT, on_calendar)
 
 
 def uninstall() -> None:

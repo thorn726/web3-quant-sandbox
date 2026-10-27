@@ -89,8 +89,8 @@ def test_clean_reconciliation_keeps_breaker_open(tmp_path, ledger):
     assert not breaker.is_tripped()
 
 
-def test_paper_fills_excluded_from_exchange_comparison(ledger):
-    ex = PaperExecutor(ledger, _limits())
+def test_paper_fills_excluded_from_exchange_comparison(ledger, tmp_path):
+    ex = PaperExecutor(ledger, _limits(), CircuitBreaker(tmp_path / "breaker.json"))
     ex.submit("BTCUSDT", "buy", 0.1, 100.0)  # no exchange id (paper)
     assert reconcile.local_exchange_ids(ledger) == set()
 
