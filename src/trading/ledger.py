@@ -82,7 +82,8 @@ class Ledger:
                     side TEXT NOT NULL CHECK (side IN ('buy', 'sell')),
                     price REAL NOT NULL CHECK (price > 0),
                     quantity REAL NOT NULL CHECK (quantity > 0),
-                    traded_at TEXT NOT NULL
+                    traded_at TEXT NOT NULL,
+                    exchange_trade_id TEXT NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS positions (
                     seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,7 +154,15 @@ class Ledger:
 
     # -- fills and positions ----------------------------------------------
 
-    def record_fill(self, order_id: str, symbol: str, side: str, price: float, quantity: float) -> str:
+    def record_fill(
+        self,
+        order_id: str,
+        symbol: str,
+        side: str,
+        price: float,
+        quantity: float,
+        exchange_trade_id: str = "",
+    ) -> str:
         fill_id = uuid.uuid4().hex
         with self._lock, self._conn:
             exists = self._conn.execute(
@@ -162,9 +171,9 @@ class Ledger:
             if exists is None:
                 raise KeyError(f"unknown order: {order_id}")
             self._conn.execute(
-                "INSERT INTO fills (fill_id, order_id, symbol, side, price, quantity, traded_at)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (fill_id, order_id, symbol, side, float(price), float(quantity), _now()),
+                "INSERT INTO fills (fill_id, order_id, symbol, side, price, quantity, traded_at, exchange_trade_id)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (fill_id, order_id, symbol, side, float(price), float(quantity), _now(), exchange_trade_id),
             )
             row = self._conn.execute(
                 "SELECT quantity FROM positions WHERE symbol = ? ORDER BY seq DESC LIMIT 1",

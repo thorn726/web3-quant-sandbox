@@ -4,9 +4,10 @@
 
 **Blocked by:** 05、06
 
-**Status:** ready-for-agent (代码可先行，联调需 06)
+**Status:** ready-for-human (code complete + unit tests green; WeCom/SMTP/Binance API 联调待服务器)
 
-- [ ] 对账逐笔比对实现，差异→告警→熔断链路测试通过
-- [ ] 熔断后所有下单路径拒绝执行，恢复需人工显式操作
-- [ ] 双通道告警发送跑通，通道故障互不影响
-- [ ] 心跳日报与水位过期告警定时触发
+- [x] 对账逐笔比对实现（按 exchange trade id），差异→告警→熔断链路测试通过
+- [x] 熔断后所有下单路径拒绝执行，恢复仅限人工显式 reset
+- [x] 双通道告警（企微 webhook + SMTP 邮件）实现，通道故障互不影响且不影响熔断状态（测试证明）
+- [ ] 心跳日报与水位过期告警定时触发（随 08 部署体系联调）
+- [ ] 企微/SMTP/Binance API 真实凭据联调（服务器）
