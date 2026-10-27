@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "updated_at": "2026-08-01T10:15:38+00:00",
+  "updated_at": "2026-10-27T10:31:05+00:00",
   "datasets": {
     "opportunity_scan": {
       "layer": "snapshot",
       "origin": "live",
-      "path": "data/dashboard/snapshots/history/opportunity_scan/2026-08-01T10-15-38.005223+00-00.json",
+      "path": "data/dashboard/snapshots/history/opportunity_scan/2026-10-27T08-10-13.894146+00-00.json",
       "complete": true,
       "reason": "",
-      "updated_at": "2026-08-01T10:15:38+00:00",
+      "updated_at": "2026-10-27T08:10:13+00:00",
       "cache_key": "opportunity_scan",
       "latest_path": "data/dashboard/snapshots/opportunity_scan.json",
-      "history_id": "2026-08-01T10-15-38.005223+00-00"
+      "history_id": "2026-10-27T08-10-13.894146+00-00"
     },
     "market_tickers": {
       "layer": "snapshot",
@@ -45,6 +45,50 @@
       "cache_key": "binance_markets",
       "latest_path": "data/dashboard/snapshots/binance_markets.json",
       "history_id": "2026-08-01T10-15-36.841193+00-00"
+    },
+    "test_ai_picks": {
+      "layer": "snapshot",
+      "origin": "test",
+      "path": "data/dashboard/snapshots/history/test_ai_picks/2026-10-27T10-31-05.440676+00-00.json",
+      "complete": true,
+      "reason": "",
+      "updated_at": "2026-10-27T10:31:05+00:00",
+      "cache_key": "test_ai_picks",
+      "latest_path": "data/dashboard/snapshots/test_ai_picks.json",
+      "history_id": "2026-10-27T10-31-05.440676+00-00"
+    },
+    "test_persist_history": {
+      "layer": "snapshot",
+      "origin": "live",
+      "path": "data/dashboard/snapshots/history/test_persist_history/2026-10-27T10-31-05.460291+00-00.json",
+      "complete": true,
+      "reason": "",
+      "updated_at": "2026-10-27T10:31:05+00:00",
+      "cache_key": "test_persist_history",
+      "latest_path": "data/dashboard/snapshots/test_persist_history.json",
+      "history_id": "2026-10-27T10-31-05.460291+00-00"
+    },
+    "test_persist_corrupt_history": {
+      "layer": "snapshot",
+      "origin": "live",
+      "path": "data/dashboard/snapshots/history/test_persist_corrupt_history/2026-10-27T10-31-05.461178+00-00.json",
+      "complete": true,
+      "reason": "",
+      "updated_at": "2026-10-27T10:31:05+00:00",
+      "cache_key": "test_persist_corrupt_history",
+      "latest_path": "data/dashboard/snapshots/test_persist_corrupt_history.json",
+      "history_id": "2026-10-27T10-31-05.461178+00-00"
+    },
+    "test_persist_priority": {
+      "layer": "snapshot",
+      "origin": "live",
+      "path": "data/dashboard/snapshots/history/test_persist_priority/2026-10-27T10-31-05.462388+00-00.json",
+      "complete": true,
+      "reason": "",
+      "updated_at": "2026-10-27T10:31:05+00:00",
+      "cache_key": "test_persist_priority",
+      "latest_path": "data/dashboard/snapshots/test_persist_priority.json",
+      "history_id": "2026-10-27T10-31-05.462388+00-00"
     }
   }
 }
