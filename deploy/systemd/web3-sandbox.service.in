@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User={{USER}}
 WorkingDirectory={{REPO_DIR}}
 Environment=SANDBOX_HOST={{HOST}}
 Environment=SANDBOX_PORT={{PORT}}

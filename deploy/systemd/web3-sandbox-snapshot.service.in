@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+User={{USER}}
 WorkingDirectory={{REPO_DIR}}
 EnvironmentFile=-{{REPO_DIR}}/.env
 ExecStart={{REPO_DIR}}/.venv/bin/python {{REPO_DIR}}/dashboard_snapshot.py --mode auto

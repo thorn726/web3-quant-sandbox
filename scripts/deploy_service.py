@@ -2,7 +2,7 @@
 
 Usage:
     python scripts/deploy_service.py install-service
-    python scripts/deploy_service.py install-timer [--on-calendar daily]
+    python scripts/deploy_service.py install-timer [--on-calendar "*-*-* 06:30:00"]
     python scripts/deploy_service.py uninstall
 
 Unit files are rendered from deploy/systemd/*.in with the repository path
@@ -16,6 +16,7 @@ import os
 import pwd
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,27 +46,42 @@ def _systemctl(*args: str) -> None:
     subprocess.run(["sudo", "systemctl", *args], check=True)
 
 
+def _require_linux() -> None:
+    if sys.platform == "darwin":
+        raise SystemExit("systemd deployment targets Linux servers; run this on the server.")
+
+
 def _write_unit(name: str, content: str) -> None:
     target = UNIT_DIR / name
-    tmp = Path("/tmp") / name
-    tmp.write_text(content, encoding="utf-8")
-    subprocess.run(["sudo", "cp", str(tmp), str(target)], check=True)
-    tmp.unlink()
+    fd, tmp_name = tempfile.mkstemp(prefix=f"{name}.", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+        subprocess.run(["sudo", "cp", str(tmp), str(target)], check=True)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _activate(unit: str, *, start: bool) -> None:
+    _systemctl("daemon-reload")
+    if start:
+        # enable --now alone won't restart an already-active unit; restart so
+        # unit-file or .env changes take effect on a re-deploy.
+        _systemctl("enable", unit)
+        _systemctl("restart", unit)
+    else:
+        _systemctl("enable", "--now", unit)
+    print(f"installed {unit}" + (" and restarted" if start else ""))
 
 
 def install_service(host: str, port: str) -> None:
-    if sys.platform == "darwin":
-        raise SystemExit("systemd deployment targets Linux servers; run this on the server.")
     template = (TEMPLATE_DIR / f"{SERVICE_UNIT}.in").read_text(encoding="utf-8")
     _write_unit(SERVICE_UNIT, _render(template, host=host, port=port, on_calendar=""))
-    _systemctl("daemon-reload")
-    _systemctl("enable", "--now", SERVICE_UNIT)
-    print(f"installed and started {SERVICE_UNIT}")
+    _activate(SERVICE_UNIT, start=True)
 
 
 def install_timer(on_calendar: str) -> None:
-    if sys.platform == "darwin":
-        raise SystemExit("systemd deployment targets Linux servers; run this on the server.")
     service_tpl = (TEMPLATE_DIR / f"{SNAPSHOT_SERVICE_UNIT}.in").read_text(encoding="utf-8")
     timer_tpl = (TEMPLATE_DIR / f"{SNAPSHOT_TIMER_UNIT}.in").read_text(encoding="utf-8")
     _write_unit(SNAPSHOT_SERVICE_UNIT, _render(service_tpl, host="", port="", on_calendar=on_calendar))
@@ -76,8 +92,6 @@ def install_timer(on_calendar: str) -> None:
 
 
 def uninstall() -> None:
-    if sys.platform == "darwin":
-        raise SystemExit("systemd deployment targets Linux servers; run this on the server.")
     for unit in (SNAPSHOT_TIMER_UNIT, SNAPSHOT_SERVICE_UNIT, SERVICE_UNIT):
         subprocess.run(
             ["sudo", "systemctl", "disable", "--now", unit],
@@ -104,6 +118,7 @@ def main() -> int:
         help="systemd OnCalendar expression (default: daily at 06:30).",
     )
     args = parser.parse_args()
+    _require_linux()
     if args.command == "install-service":
         install_service(args.host, args.port)
     elif args.command == "install-timer":

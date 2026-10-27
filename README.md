@@ -263,9 +263,9 @@ git clone <repo-url> web3-quant-sandbox && cd web3-quant-sandbox
 make deploy
 ```
 
-`make deploy` 依次完成：venv 创建 → Python 依赖安装 → `npm ci` + 前端构建（复用 `make setup`）→ 安装并启动 systemd 服务 → 安装并启用快照定时刷新 timer。任一步失败会直接报错，修复后可重跑（幂等，重复执行安全）。
+`make deploy` 依次完成：venv 创建 → Python 依赖安装 → `npm ci` + 前端构建（复用 `make setup`）→ 安装并启动 systemd 服务 → 安装并启用快照定时刷新 timer。任一步失败会直接报错，修复后可重跑；重跑安全且幂等，服务会在重跑时被重启以使 unit/.env 变更生效。
 
-服务默认监听 `0.0.0.0:8765`，可用 `SANDBOX_HOST` / `SANDBOX_PORT` 环境变量覆盖（对 `make deploy` 传参即可，如 `make deploy SANDBOX_PORT=9000`）。
+服务经 `make deploy` 部署后默认监听 `0.0.0.0:8765`；直接 `python app.py` 手动运行时默认仍只监听 `127.0.0.1:8765`。两者都可用 `SANDBOX_HOST` / `SANDBOX_PORT` 环境变量覆盖（对 `make deploy` 传参即可，如 `make deploy SANDBOX_PORT=9000`）。
 
 ### 防火墙白名单（仅放行自己的 IP）
 
@@ -311,6 +311,7 @@ systemd unit 通过 `EnvironmentFile=-/path/to/.env` 读取该文件（不存在
 | `make service-restart` | 重启服务 |
 | `make snapshot-refresh` | 手动刷新快照 |
 | `make snapshot-status` | 查看刷新 timer 状态与下次触发时间 |
+| `make snapshot-logs` | 查看快照刷新任务日志（成功/失败记录） |
 | `make verify` | 一键自检（构建 + 测试 + 边界检查） |
 
 卸载部署：`.venv/bin/python scripts/deploy_service.py uninstall`。

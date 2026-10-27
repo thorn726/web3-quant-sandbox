@@ -1,6 +1,6 @@
 .PHONY: setup check verify courseware-check teaching-plots \
         deploy deploy-service deploy-timer service-status service-logs service-restart \
-        snapshot-refresh snapshot-status
+        snapshot-refresh snapshot-status snapshot-logs
 
 PYTHON ?= python3
 VENV_PYTHON := .venv/bin/python
@@ -9,6 +9,7 @@ SANDBOX_PORT ?= 8765
 ON_CALENDAR ?= *-*-* 06:30:00
 SERVICE_NAME := web3-sandbox
 SNAPSHOT_TIMER_NAME := web3-sandbox-snapshot.timer
+SNAPSHOT_SERVICE_NAME := web3-sandbox-snapshot.service
 
 setup:
 	$(PYTHON) scripts/course.py setup
@@ -42,6 +43,9 @@ service-status:
 
 service-logs:
 	journalctl -u $(SERVICE_NAME) -n 200 -f
+
+snapshot-logs:
+	journalctl -u $(SNAPSHOT_SERVICE_NAME) -n 200
 
 service-restart:
 	sudo systemctl restart $(SERVICE_NAME)
