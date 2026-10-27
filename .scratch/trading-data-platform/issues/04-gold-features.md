@@ -4,8 +4,8 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (code complete; all checks green)
 
-- [ ] 至少一组特征表从 silver 派生并可被 backtest 消费
-- [ ] schema 有版本标识，重算不产生重复/冲突
-- [ ] 教学沙盒原有数据路径不回归（现有测试全绿）
+- [x] 至少一组特征表从 silver 派生并可被 backtest 消费（log_return / sma_5_20_ratio / volatility_20 / volume_zscore_20）
+- [x] schema 有版本标识，重算不产生重复/冲突（features-v{N}.parquet + meta 侧车，重建字节级一致）
+- [x] 教学沙盒原有数据路径不回归（全量 234 passed）
