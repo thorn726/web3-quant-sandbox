@@ -1,7 +1,8 @@
 .PHONY: setup check verify courseware-check teaching-plots \
-        deploy deploy-service deploy-timer deploy-data-timer service-status service-logs service-restart \
+        deploy deploy-service deploy-timer deploy-data-timer deploy-trading-timer service-status service-logs service-restart \
         snapshot-refresh snapshot-status snapshot-logs \
-        marketdata-backfill marketdata-refresh marketdata-status marketdata-logs
+        marketdata-backfill marketdata-refresh marketdata-status marketdata-logs \
+        trading-status trading-logs
 
 PYTHON ?= python3
 VENV_PYTHON := .venv/bin/python
@@ -13,8 +14,11 @@ SNAPSHOT_TIMER_NAME := web3-sandbox-snapshot.timer
 SNAPSHOT_SERVICE_NAME := web3-sandbox-snapshot.service
 MARKETDATA_TIMER_NAME := web3-sandbox-marketdata.timer
 MARKETDATA_SERVICE_NAME := web3-sandbox-marketdata.service
+TRADING_TIMER_NAME := web3-sandbox-trading.timer
+TRADING_SERVICE_NAME := web3-sandbox-trading.service
 MARKETDATA_CALENDAR ?= *-*-* *:*/5
 MARKETDATA_BACKFILL_START ?= 2020-01-01
+TRADING_CALENDAR ?= *-*-* *:*/5
 
 setup:
 	$(PYTHON) scripts/course.py setup
@@ -77,3 +81,14 @@ marketdata-status:
 
 marketdata-logs:
 	journalctl -u $(MARKETDATA_SERVICE_NAME) -n 200
+
+# --- Trading worker (reconcile + freshness + heartbeat) ---
+
+deploy-trading-timer:
+	$(VENV_PYTHON) scripts/deploy_service.py install-trading-timer --on-calendar "$(TRADING_CALENDAR)"
+
+trading-status:
+	systemctl list-timers $(TRADING_TIMER_NAME) --all
+
+trading-logs:
+	journalctl -u $(TRADING_SERVICE_NAME) -n 200

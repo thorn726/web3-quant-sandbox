@@ -331,6 +331,77 @@ systemd unit 通过 `EnvironmentFile=-/path/to/.env` 读取该文件（不存在
 3. 快照定时刷新 + 断网降级：`make snapshot-status` 可见触发记录；断网下 `make snapshot-refresh` 失败但页面仍返回旧快照。
 4. 服务器上 `make verify` 全绿 + 核心页面操作正常。
 
+## 数据底座与交易系统
+
+在沙盒之上叠加的量化数据平台与（可选的）交易执行侧。架构与决策记录见
+`.scratch/trading-data-platform/spec.md`，术语见 `CONTEXT.md`。
+
+### 组成
+
+- **数据管道**（`src/market_data/`）：bronze（Binance 原始 K 线，月分区 Parquet，只增不改）
+  → silver（清洗标准 K 线，坏行进 quarantine）→ gold（因子特征表）。
+- **执行侧**（`src/trading/`）：SQLite WAL 执行账本（append-only）、配置化风控闸门、
+  paper 执行器、对账熔断（企微 + 邮件双通道告警）。
+- **交易 worker**（`scripts/trading_worker.py`）：定时对账 + 数据新鲜度检查 + 每日心跳。
+
+### 部署序列（在"生产部署"之后追加）
+
+```bash
+.venv/bin/python -m pip install pandas pyarrow duckdb ccxt
+```
+
+```bash
+make marketdata-backfill MARKETDATA_BACKFILL_START=2020-01-01
+```
+
+```bash
+make deploy-data-timer MARKETDATA_CALENDAR='*-*-* *:*/5'
+```
+
+```bash
+make deploy-trading-timer TRADING_CALENDAR='*-*-* *:*/5'
+```
+
+```bash
+make marketdata-status
+```
+
+```bash
+make trading-status
+```
+
+日常运维：`make marketdata-logs`、`make trading-logs`、
+`python scripts/backup_ledger.py`（账本备份，建议 cron 每日一次）。
+
+### `.env` 配置项（不进 git）
+
+| 变量 | 说明 |
+| --- | --- |
+| `TRADING_MODE` | `research_only`（缺省）/ `live`；`live` 在对账熔断（07）联调前仍被拒绝 |
+| `TRADING_MAX_ORDER_QUOTE` | 单笔最大名义金额（USDT），**必填才允许交易** |
+| `TRADING_MAX_POSITION_QUOTE` | 单币种最大仓位（USDT），必填 |
+| `TRADING_DAILY_LOSS_QUOTE` | 日最大亏损（USDT），触发当日停止，必填 |
+| `TRADING_WECOM_WEBHOOK` | 企业微信机器人 webhook（主告警通道） |
+| `TRADING_SMTP_HOST` / `TRADING_SMTP_PORT` / `TRADING_SMTP_USER` / `TRADING_SMTP_PASS` / `TRADING_ALERT_EMAIL_TO` | 邮件兜底通道 |
+| `BINANCE_API_KEY` / `BINANCE_API_SECRET` | 交易所只读对账用；**只开读取权限**，切实盘阶段再开交易权限（禁止提现） |
+| `MARKET_DATA_SYMBOLS` / `MARKET_DATA_INTERVAL` | 管道标的与周期，默认 `BTCUSDT,ETHUSDT` / `1d` |
+| `TRADING_STALE_AFTER_MS` | 数据新鲜度告警阈值，默认 6 小时 |
+
+### 安全模型
+
+- 缺省 research-only：`make verify` 校验缺省配置下执行能力不可达。
+- 对账差异 → 自动熔断（停止一切下单）+ 双通道告警；恢复必须人工删除/重置熔断状态。
+- 日亏熔断基于账本成交事实重算，次日 UTC 日自动恢复。
+- 账本 append-only：状态流转是新行不是 UPDATE，历史不可篡改。
+
+### Paper → 实盘切换清单
+
+1. paper trading 稳定运行 ≥4 周，无未处理告警。
+2. `BINANCE_API_KEY` 开通交易权限（仍禁止提现），完成一次小额真实对账演练。
+3. 人工触发一次熔断演练并恢复（确认链路可用）。
+4. `.env` 设 `TRADING_MODE=live` 并重启相关 timer —— 换配置，不改代码。
+
+
 ## 项目结构
 
 ```text

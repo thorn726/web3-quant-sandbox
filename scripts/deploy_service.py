@@ -28,6 +28,8 @@ SNAPSHOT_SERVICE_UNIT = "web3-sandbox-snapshot.service"
 SNAPSHOT_TIMER_UNIT = "web3-sandbox-snapshot.timer"
 MARKETDATA_SERVICE_UNIT = "web3-sandbox-marketdata.service"
 MARKETDATA_TIMER_UNIT = "web3-sandbox-marketdata.timer"
+TRADING_SERVICE_UNIT = "web3-sandbox-trading.service"
+TRADING_TIMER_UNIT = "web3-sandbox-trading.timer"
 
 
 def _render(template: str, *, host: str, port: str, on_calendar: str) -> str:
@@ -103,12 +105,24 @@ def install_data_timer(on_calendar: str) -> None:
     print(f"installed and started {MARKETDATA_TIMER_UNIT}")
 
 
+def install_trading_timer(on_calendar: str) -> None:
+    service_tpl = (TEMPLATE_DIR / f"{TRADING_SERVICE_UNIT}.in").read_text(encoding="utf-8")
+    timer_tpl = (TEMPLATE_DIR / f"{TRADING_TIMER_UNIT}.in").read_text(encoding="utf-8")
+    _write_unit(TRADING_SERVICE_UNIT, _render(service_tpl, host="", port="", on_calendar=on_calendar))
+    _write_unit(TRADING_TIMER_UNIT, _render(timer_tpl, host="", port="", on_calendar=on_calendar))
+    _systemctl("daemon-reload")
+    _systemctl("enable", "--now", TRADING_TIMER_UNIT)
+    print(f"installed and started {TRADING_TIMER_UNIT}")
+
+
 def uninstall() -> None:
     for unit in (
         SNAPSHOT_TIMER_UNIT,
         SNAPSHOT_SERVICE_UNIT,
         MARKETDATA_TIMER_UNIT,
         MARKETDATA_SERVICE_UNIT,
+        TRADING_TIMER_UNIT,
+        TRADING_SERVICE_UNIT,
         SERVICE_UNIT,
     ):
         subprocess.run(
@@ -129,7 +143,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "command",
-        choices=["install-service", "install-timer", "install-data-timer", "uninstall"],
+        choices=["install-service", "install-timer", "install-data-timer", "install-trading-timer", "uninstall"],
     )
     parser.add_argument("--host", default=os.environ.get("SANDBOX_HOST", "0.0.0.0"))
     parser.add_argument("--port", default=os.environ.get("SANDBOX_PORT", "8765"))
@@ -146,6 +160,8 @@ def main() -> int:
         install_timer(args.on_calendar)
     elif args.command == "install-data-timer":
         install_data_timer(args.on_calendar)
+    elif args.command == "install-trading-timer":
+        install_trading_timer(args.on_calendar)
     else:
         uninstall()
     return 0
