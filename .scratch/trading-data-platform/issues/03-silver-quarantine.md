@@ -4,9 +4,9 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (code complete; all checks green)
 
-- [ ] silver 标准化跑通，时区/精度/去重/补洞标记齐备
-- [ ] 三条校验规则实现，坏样本进 quarantine 且可查
-- [ ] 下游可查询各数据集水位
-- [ ] 降级 pytest 覆盖并通过
+- [x] silver 标准化跑通，时区/精度/去重/补洞标记齐备（gap_after 标记，UTC 毫秒，open_time 去重）
+- [x] 三条校验规则实现，坏样本进 quarantine 且可查（ohlc_range / negative_volume / duplicate_open_time / bad_open_time 分类落盘）
+- [x] 下游可查询各数据集水位（silver.watermark()）
+- [x] 降级 pytest 覆盖并通过（5 条）
