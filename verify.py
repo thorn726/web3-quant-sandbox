@@ -33,6 +33,36 @@ def build_frontend() -> None:
     subprocess.run([npm, "run", "build"], cwd=WEB_DIR, env=env, check=True)
 
 
+def check_trading_mode_boundary() -> None:
+    """Default config must be research-only; live requires explicit opt-in."""
+    src = str(ROOT / "src")
+    probe = (
+        "import sys; sys.path.insert(0, {src!r}); "
+        "from config.trading_mode import execution_enabled, get_trading_mode; "
+        "print(get_trading_mode(), int(execution_enabled()))"
+    ).format(src=src)
+    default = subprocess.run(
+        [sys.executable, "-I", "-c", probe],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+    ).stdout.split()
+    if default != ["research_only", "0"]:
+        raise SystemExit(f"boundary breach: default trading mode is {default}, expected research_only/0")
+
+    live = subprocess.run(
+        [sys.executable, "-I", "-c", probe],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+        env={**os.environ, "TRADING_MODE": "live"},
+    ).stdout.split()
+    if live != ["live", "1"]:
+        raise SystemExit(f"opt-in gate broken: TRADING_MODE=live yielded {live}, expected live/1")
+
+
 def main() -> int:
     build_frontend()
     required = [
@@ -69,6 +99,8 @@ def main() -> int:
     ):
         if phrase not in encoded:
             raise SystemExit(f"report is missing required boundary or metric: {phrase}")
+
+    check_trading_mode_boundary()
 
     subprocess.run(
         [

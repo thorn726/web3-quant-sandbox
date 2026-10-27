@@ -56,6 +56,13 @@ Regenerate Qbot-style teaching figures after editing plot scripts:
 py scripts/course.py teaching-plots
 ```
 
+## Execution boundary
+
+The system is research-only by default. Real-order execution is reachable
+only when `TRADING_MODE=live` is set explicitly in the server environment
+(see `src/config/trading_mode.py`); default-config verification must keep
+execution inert.
+
 ## Agent skills
 
 ### Issue tracker
