@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (code complete; full `make verify` pending npm access — pytest equivalent run locally: 214 passed)
 
-- [ ] verify.py 缺省配置下校验通过，实盘功能默认不可达
-- [ ] 显式开启配置后边界校验放行（仅配置层，无执行代码）
-- [ ] src/market_data/ 与 src/trading/ 骨架建立，互不依赖
-- [ ] README/AGENTS.md 红线表述修订一致
-- [ ] make verify 全绿
+- [x] verify.py 缺省配置下校验通过，实盘功能默认不可达
+- [x] 显式开启配置后边界校验放行（仅配置层，无执行代码）
+- [x] src/market_data/ 与 src/trading/ 骨架建立，互不依赖
+- [x] README/AGENTS.md 红线表述修订一致
+- [ ] make verify 全绿（本机沙盒禁 npm，待服务器验证）

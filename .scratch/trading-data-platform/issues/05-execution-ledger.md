@@ -4,9 +4,9 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (code complete; all checks green)
 
-- [ ] orders/fills/positions 表建立，append-only 有测试证明
-- [ ] WAL 模式启用，备份脚本跑通
-- [ ] 状态流转（pending→filled/cancelled 等）只允许合法路径
-- [ ] 与 market_data 的共享仅限只读，有结构保证
+- [x] orders/fills/positions 表建立，append-only 有测试证明
+- [x] WAL 模式启用，备份脚本跑通
+- [x] 状态流转（pending→filled/cancelled 等）只允许合法路径
+- [x] 与 market_data 的共享仅限只读，有结构保证

@@ -4,10 +4,10 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** ready-for-human (code complete + unit tests green; real-network backfill pending server)
 
-- [ ] Binance Vision 回填跑通，数年分钟线落为 Parquet 月分区
-- [ ] 增量更新任务幂等，重复执行不产生重复数据
-- [ ] bronze 层内容永不改写（可用测试证明：二次写入同区间不覆盖）
-- [ ] 水位表存在且随成功刷新前进
-- [ ] 断源模拟：任务失败有日志、旧数据完好、无副作用
+- [ ] Binance Vision 回填跑通，数年分钟线落为 Parquet 月分区（需服务器网络）
+- [x] 增量更新任务幂等，重复执行不产生重复数据（pytest）
+- [x] bronze 层内容永不改写（修正写 v2 版本文件；增量只追加行，pytest 证明）
+- [x] 水位表存在且随成功刷新前进（pytest）
+- [x] 断源模拟：任务失败有日志、旧数据完好、无副作用（pytest）

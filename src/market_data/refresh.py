@@ -102,7 +102,8 @@ def backfill_vision(root: Path, symbol: str, interval: str, start_ms: int, end_m
         if path.exists() and not storage.partition_path(root, "binance", symbol, interval, month, version=2).exists():
             existing = pd.read_parquet(path)
             lo, hi = _month_bounds(month)
-            if int(existing["open_time"].min()) >= lo and int(existing["open_time"].max()) >= hi - 60_000:
+            expected_hi = min(hi, end) - 60_000  # trailing month may be partial
+            if int(existing["open_time"].min()) >= lo and int(existing["open_time"].max()) >= expected_hi:
                 continue  # complete month already archived
         raw = fetch_vision_month(symbol, interval, month)
         df = _parse_vision_csv(raw)
